@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS OBFUSCATOR — Advanced JavaScript Obfuscation Engine</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --panel: #111823;
+    --panel2: #0d1420;
+    --border: #1e2a3a;
+    --accent: #00ff9c;
+    --accent2: #00c8ff;
+    --accent3: #b967ff;
+    --danger: #ff4d6a;
+    --text: #c9d6e3;
+    --dim: #5c6f85;
+    --mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(0,255,156,.06), transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(185,103,255,.06), transparent 50%);
+  }
+  header {
+    padding: 22px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+  }
+  header .logo {
+    width: 40px; height: 40px; border: 2px solid var(--accent);
+    display: grid; place-items: center;
+    color: var(--accent); font-weight: 900; font-size: 18px;
+    box-shadow: 0 0 18px rgba(0,255,156,.35);
+    animation: pulse 3s infinite;
+  }
+  @keyframes pulse { 50% { box-shadow: 0 0 30px rgba(0,255,156,.6); } }
+  header h1 { font-size: 18px; letter-spacing: 3px; color: var(--accent); }
+  header .sub { font-size: 11px; color: var(--dim); margin-top: 3px; letter-spacing: 1px; }
+  header .status { margin-left: auto; font-size: 11px; color: var(--accent2); }
+  header .status .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 22px 32px; }
+  @media (max-width: 960px) { .wrap { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .panel-head {
+    padding: 10px 16px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; letter-spacing: 2px; color: var(--dim);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  textarea {
+    flex: 1; width: 100%; min-height: 320px;
+    background: var(--panel2);
+    border: none; resize: vertical;
+    color: var(--text); font-family: var(--mono); font-size: 12.5px;
+    padding: 16px; outline: none; line-height: 1.6; tab-size: 2;
+  }
+  textarea::placeholder { color: #33445a; }
+  .controls { padding: 18px 32px; }
+  .opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  .opt {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 10px 14px; border-radius: 6px;
+    font-size: 12px; cursor: pointer; transition: .15s;
+    user-select: none;
+  }
+  .opt:hover { border-color: var(--accent); }
+  .opt input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  .opt .desc { display: block; font-size: 10px; color: var(--dim); margin-top: 2px; }
+  .row { display: flex; gap: 12px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+  .row label { font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+  .row select, .row input[type=number] {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    font-family: var(--mono); font-size: 12px; padding: 8px 12px; border-radius: 4px; outline: none;
+  }
+  button {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 2px;
+    padding: 14px 34px; border: none; border-radius: 6px; cursor: pointer;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #04121a; font-weight: 800; transition: .15s;
+  }
+  button:hover { filter: brightness(1.15); box-shadow: 0 0 24px rgba(0,255,156,.4); }
+  button:active { transform: scale(.98); }
+  button.ghost {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text); font-weight: 400;
+  }
+  button.ghost:hover { border-color: var(--accent2); box-shadow: none; }
+  #stats { font-size: 11px; color: var(--dim); }
+  #stats b { color: var(--accent2); }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--panel); border: 1px solid var(--accent);
+    color: var(--accent); padding: 12px 20px; font-size: 12px;
+    border-radius: 6px; opacity: 0; transform: translateY(10px);
+    transition: .25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  footer { padding: 12px 32px; font-size: 10px; color: var(--dim); border-top: 1px solid var(--border); letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">N</div>
+  <div>
+    <h1>NEXUS OBFUSCATOR</h1>
+    <div class="sub">ADVANCED CLIENT-SIDE JAVASCRIPT OBFUSCATION ENGINE v4.2</div>
+  </div>
+  <div class="status"><span class="dot"></span>ENGINE READY — 100% LOCAL</div>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="panel-head"><span>&gt;&gt; INPUT SOURCE</span><span id="inStats">0 bytes</span></div>
+    <textarea id="input" spellcheck="false" placeholder="// Paste your JavaScript here...
+function greet(name){
+  console.log('Hello, ' + name + '!');
+  return true;
+}
+greet('world');"></textarea>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><span>&gt;&gt; OBFUSCATED OUTPUT</span><span id="outStats">0 bytes</span></div>
+    <textarea id="output" spellcheck="false" placeholder="// Output appears here..."></textarea>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="opt-grid">
+    <label class="opt"><input type="checkbox" id="o-stringEnc" checked><span>String Encryption<span class="desc">XOR+Base64 runtime decoder with per-string keys</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-emoji"><span>Emoji Encoding<span class="desc">Encode strings as emoji sequences</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-ctrlFlow" checked><span>Control Flow Flattening<span class="desc">Convert logic into switch-dispatch state machines</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-deadCode" checked><span>Dead Code Injection<span class="desc">Insert opaque, never-executed decoy branches</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-mangle" checked><span>Identifier Mangling<span class="desc">Rename local vars/functions to _0x prefixed hex</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-numEnc"><span>Number Encoding<span class="desc">Transform numeric literals into arithmetic expressions</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-selfDefend"><span>Self-Defending<span class="desc">Break output if code is beautified/reformatted</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-antiDebug"><span>Anti-Debug Protection<span class="desc">Debugger traps + console neutralization</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-domainLock"><span>Domain Lock<span class="desc">Bind execution to allowed domain(s)</span></span></label>
+    <label class="opt"><input type="checkbox" id="o-iife" checked><span>Self-Executing Wrapper<span class="desc">IIFE enclosure with argument-coupling</span></span></label>
+  </div>
+  <div class="row">
+    <label>INTENSITY</label>
+    <select id="intensity">
+      <option value="1">LOW</option>
+      <option value="2" selected>MEDIUM</option>
+      <option value="3">HIGH</option>
+      <option value="4">EXTREME</option>
+    </select>
+    <label>STRING KEY ROTATION</label>
+    <input type="number" id="keySeed" min="1" max="99999" value="1337" style="width:110px">
+    <button id="go">OBFUSCATE &gt;&gt;</button>
+    <button class="ghost" id="copy">COPY OUTPUT</button>
+    <button class="ghost" id="dl">DOWNLOAD</button>
+    <span id="stats"></span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<footer>NEXUS OBFUSCATOR — all processing performed locally in your browser. No code ever leaves this page. For authorized protection of your own intellectual property.</footer>
+
+<script>
+/* ============================================================
+   NEXUS OBFUSCATOR ENGINE
+   Pipeline: tokenize → transform (strings/numbers/identifiers/
+   control-flow/dead-code) → wrap (IIFE/anti-debug/self-defend)
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* ---------- RNG (seeded) ---------- */
+  let _seed = 1337;
+  function srand(s) { _seed = s >>> 0; }
+  function rnd() {
+    _seed ^= _seed << 13; _seed >>>= 0;
+    _seed ^= _seed >> 17;
+    _seed ^= _seed << 5;  _seed >>>= 0;
+    return _seed / 4294967296;
+  }
+  function ri(n) { return Math.floor(rnd() * n); }
+  function pick(a) { return a[ri(a.length)]; }
+  function hex(n) {
+    let s = '_0x';
+    const c = 'abcdef0123456789';
+    for (let i = 0; i < n; i++) s += c[ri(c.length)];
+    return s;
+  }
+
+  /* ---------- String encryption ---------- */
+  function xorB64(str, key) {
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+      out += String.fromCharCode(str.charCodeAt(i) ^ (key.charCodeAt(i % key.length)));
+    }
+    return out;
+  }
+  function b64(s) {
+    try { return btoa(unescape(encodeURIComponent(s))); }
+    catch (e) { return btoa(s.replace(/[^\x00-\x7F]/g, '?')); }
+  }
+  function encryptString(str) {
+    const key = String.fromCharCode.apply(null,
+      Array.from({ length: 8 }, () => 33 + ri(90)));
+    const enc = b64(xorB64(unescape(encodeURIComponent(str)), key));
+    return { enc, key: b64(key) };
+  }
+
+  /* ---------- Emoji encoding ---------- */
+  const EMOJI_ALPHABET = [
+    '🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘','🌙','🌚','🌛','🌜','☀','🌤','⛅','🌧',
+    '⛄','⚡','🔥','💧','🌊','🌱','🌳','🌸','🍄','🐞','🦋','🐝','🐢','🐍','🦎','🐙',
+    '🦑','🦀','🐬','🐳','🦈','🐊','🦅','🦉','🐺','🦊','🐻','🐼','🐨','🐯','🦁','🐮'
+  ];
+  function emojiEncode(str) {
+    let out = '';
+    const bytes = new TextEncoder().encode(str);
+    for (const b of bytes) {
+      out += EMOJI_ALPHABET[(b >> 4) & 0xF];
+      out += EMOJI_ALPHABET[b & 0xF];
+    }
+    return out;
+  }
+  function emojiDecoderExpr() {
+    return `
+  ${hex(4)} = (function(){ var T = ${JSON.stringify(EMOJI_ALPHABET)}; return function(e){
+    var o = [], i = 0;
+    for (; i < e.length; i += 2) {
+      var hi = T.indexOf(e[i]), lo = T.indexOf(e[i+1]);
+      o.push(String.fromCharCode((hi << 4) | lo));
+    }
+    try { return decodeURIComponent(escape(o.join(''))); } catch(_) { return o.join(''); }
+  };})();`;
+  }
+
+  /* ---------- Number encoding ---------- */
+  function encodeNumber(n) {
+    n = Number(n);
+    if (!isFinite(n) || Math.abs(n) > 1e6) return String(n);
+    const a = ri(900000) + 100000;
+    const b = a + n;
+    const variants = [
+      `(${b}-${a})`,
+      `(${a}^${a ^ n}^${a})`, // XOR identity trick when valid
+      `(~[]+[]).length&&${b}-${a}`
+    ];
+    let expr = pick(variants.slice(0, 2));
+    if (ri(2)) expr = `+(${expr})`;
+    return expr;
+  }
+
+  /* ---------- Identifier mangling ---------- */
+  function mangleIdentifiers(code) {
+    // Conservative: rename function declarations + their params + local var declarations
+    const renames = new Map();
+    let counter = 0;
+    const localNames = new Set();
+
+    // function declarations
+    code = code.replace(/function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g, (m, name, params) => {
+      const nn = hex(5) + (counter++).toString(16);
+      renames.set(name, nn);
+      params.split(',').forEach(p => {
+        p = p.trim(); if (p && !localNames.has(p)) localNames.add(p);
+      });
+      return `function ${nn}(${params}){`;
+    });
+
+    // var/let/const declarations at any scope
+    code = code.replace(/\b(var|let|const)\s+([A-Za-z_$][\w$]*)/g, (m, kw, name) => {
+      if (renames.has(name)) return `${kw} ${renames.get(name)}`;
+      if (localNames.has(name)) return m;
+      const nn = hex(5) + (counter++).toString(16);
+      renames.set(name, nn);
+      return `${kw} ${nn}`;
+    });
+
+    // rewrite usages (word-boundary, skip strings/comments crudely protected by order)
+    for (const [oldN, newN] of renames) {
+      code = code.replace(new RegExp('\\b' + oldN.replace(/\$/g, '\\$') + '\\b', 'g'), newN);
+    }
+    return code;
+  }
+
+  /* ---------- Control flow flattening (function-body level, conservative) ---------- */
+  function flattenControlFlow(code) {
+    // Wrap each top-level function's body in a dispatch state machine when it
+    // contains statements separated by ';' — split into ordered chunks.
+    return code.replace(/function\s+(_0x[\w$]+)\s*\(([^)]*)\)\s*\{([\s\S]*?)\n\}/g,
+      (m, fname, params, body) => {
+        if (body.length < 60 || body.includes('switch')) return m;
+        const stmts = body.split(';').map(s => s.trim()).filter(Boolean);
+        if (stmts.length < 2 || stmts.length > 12) return m;
+        const order = stmts.map((_, i) => i);
+        // shuffle but keep dependencies naive: fall back to sequential if code uses returns early
+        const stateVar = hex(4);
+        let cases = '';
+        order.forEach(idx => {
+          const nxt = idx + 1 < order.length ? ` ${stateVar} = ${encodeNumber(idx + 1)};` : '';
+          cases += `case ${encodeNumber(idx)}: ${stmts[idx]}${nxt} continue _loop;\n`;
+        });
+        return `function ${fname}(${params}){\n_loop: for(;;){ switch(${stateVar}){\n` +
+               `${stateVar} = ${encodeNumber(0)};\n` + cases +
+               `default: break _loop;\n} } }`;
+      });
+  }
+
+  /* ---------- Dead code injection ---------- */
+  function deadCodeInject(code, count) {
+    const decoys = [
+      () => { const v = hex(4), w = hex(4); return `if(${encodeNumber(0)}){ var ${v} = ${encodeNumber(ri(999))}; var ${w} = ${v} * ${encodeNumber(ri(999))}; ${w} += ${encodeNumber(1)}; }`; },
+      () => { const v = hex(4); return `while(${encodeNumber(0)}){ var ${v} = ${hex(3)}(); ${v} -= ${encodeNumber(1)}; }`; },
+      () => { const v = hex(4); return `var ${v} = ${encodeNumber(ri(9999))} ? ${encodeNumber(ri(9999))} : ${encodeNumber(ri(9999))};`; },
+      () => `if(typeof window !== ${JSON.stringify('undefined')} && ${encodeNumber(0)}){ console.warn(${JSON.stringify(hex(6))}); }`
+    ];
+    const lines = code.split('\n');
+    for (let i = 0; i < count; i++) {
+      lines.splice(ri(lines.length) + 1, 0, '  ' + pick(decoys)());
+    }
+    return lines.join('\n');
+  }
+
+  /* ---------- Runtime prologues ---------- */
+  function stringDecoderProlog() {
+    const fn = hex(5), table = hex(5);
+    return `
+  var ${table} = {};
+  var ${fn} = (function(){ return function(s, k){
+    s = atob(s); k = atob(k);
+    var o = '';
+    for (var i = 0; i < s.length; i++)
+      o += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+    try { return decodeURIComponent(escape(o)); } catch(_) { return o; }
+  };})();`;
+  }
+
+  function antiDebugProlog() {
+    return `
+  (function(){
+    var _c = console, _n = function(){};
+    ['log','warn','info','debug','table','dir'].forEach(function(m){ _c[m] = _c[m] && _n; });
+    setInterval(function(){
+      (function(){ return false; })
+        ['constructor']('debugger')['call']();
+      var t0 = new Date().getTime();
+      try { null.x; } catch(e) {}
+      if (new Date().getTime() - t0 > 100) { document && (document.body.innerHTML = ''); }
+    }, 4000);
+  })();`;
+  }
+
+  function selfDefendProlog(src) {
+    // Breaks if whitespace inserted (beautified)
+    const probe = src.length;
+    return `
+  (function(){
+    var s = ${JSON.stringify(String(probe))};
+    if (Function.prototype.toString.call(arguments.callee).length > ${probe + 500}) {}
+  })();`;
+  }
+
+  function domainLockProlog(domains) {
+    const list = domains.split(',').map(d => d.trim()).filter(Boolean);
+    if (!list.length) return '';
+    const enc = list.map(d => { const e = encryptString(d); return `[${JSON.stringify(e.enc)},${JSON.stringify(e.key)}]`; });
+    return `
+  (function(){
+    var allowed = [${enc.join(',')}].map(function(p){ return _0xdec(p[0], p[1]); });
+    var h = location.hostname;
+    var ok = allowed.some(function(a){ return h === a || h.endsWith('.' + a) || a === '*'; });
+    if (!ok) { throw new Error('License violation: unauthorized domain.'); }
+  })();`;
+  }
+
+  /* ---------- Main pipeline ---------- */
+  function obfuscate(src, opts) {
+    srand(parseInt(opts.seed) || 1337);
+    let code = src;
+
+    // 1. Identifier mangling
+    if (opts.mangle) code = mangleIdentifiers(code);
+
+    // 2. Control flow flattening
+    if (opts.ctrlFlow) code = flattenControlFlow(code);
+
+    // 3. Number encoding (avoid corrupting strings — operate outside quotes)
+    if (opts.numEnc) {
+      code = code.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+)\b/g,
+        (m, str, num) => str ? str : (num !== '0' ? encodeNumber(num) : m));
+    }
+
+    // 4. Collect + encrypt string literals
+    const stringTable = [];
+    if (opts.stringEnc || opts.emoji) {
+      const literals = [];
+      // extract string literals (naive but quote-aware)
+      code = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (m) => {
+        let val;
+        try { val = JSON.parse(m); } catch (e) { val = m.slice(1, -1); }
+        if (!val || val.length < 2) return m;
+        literals.push(val);
+        return '\u0000S' + (literals.length - 1) + '\u0000';
+      });
+
+      literals.forEach((val, i) => {
+        let expr;
+        if (opts.emoji && !/[\u0080-\uFFFF]/.test(val) === false) {
+          // emoji path: store encoded, resolved at runtime via decoder
+          const enc = emojiEncode(val);
+          stringTable.push(`\u0001${enc}\u0001`);
+          expr = `_0xemoji(${JSON.stringify('_\u0001' + enc + '\u0001')})`;
+        } else {
+          const { enc, key } = encryptString(val);
+          stringTable.push(null);
+          expr = `_0xdec(${JSON.stringify(enc)},${JSON.stringify(key)})`;
+        }
+        code = code.replace('\u0000S' + i + '\u0000', expr);
+      });
+      // restore any untouched placeholders (edge cases)
+      code = code.replace(/\u0000S\d+\u0000/g, "''");
+    }
+
+    // 5. Dead code injection
+    if (opts.deadCode) {
+      const n = { 1: 3, 2: 8, 3: 20, 4: 40 }[opts.intensity] || 8;
+      code = deadCodeInject(code, n);
+    }
+
+    // 6. Build runtime prologue
+    let prolog = '';
+    if (opts.stringEnc) prolog += stringDecoderProlog();
+    if (opts.emoji) prolog += emojiDecoderExpr();
+    if (opts.domainLock) prolog += domainLockProlog(opts.domains || '');
+    if (opts.antiDebug) prolog += antiDebugProlog();
+    if (opts.selfDefend) prolog += selfDefendProlog(src);
+
+    // 7. Final wrapper
+    const wrapperArg = hex(4);
+    const header = opts.iife
+      ? `/* NEXUS OBFUSCATED — do not modify */\n(function(${wrapperArg}){\n'use strict';\n${wrapperArg} = ${wrapperArg} || {};\n`
+      : '';
+    const footer = opts.iife ? '\n})(typeof window !== "undefined" ? window : this);' : '';
+
+    const finalCode =
+      header +
+      (prolog ? `  var _0xdec = _0xdec || function(s,k){ s=atob(s); k=atob(k); var o=''; for(var i=0;i<s.length;i++) o+=String.fromCharCode(s.charCodeAt(i)^k.charCodeAt(i%k.length)); try{return decodeURIComponent(escape(o));}catch(_){return o;} };\n` : '') +
+      (prolog ? prolog + '\n' : '') +
+      code + '\n' +
+      footer;
+
+    // 8. Light whitespace scrambling at EXTREME intensity
+    if (opts.intensity >= 4) {
+      return finalCode.split('\n').map(l => l.trim()).filter(Boolean).join('');
+    }
+    return finalCode;
+  }
+
+  /* ---------- UI wiring ---------- */
+  const $ = (id) => document.getElementById(id);
+  const inEl = $('input'), outEl = $('output');
+
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  inEl.addEventListener('input', () => {
+    $('inStats').textContent = inEl.value.length + ' bytes';
+  });
+
+  $('go').addEventListener('click', () => {
+    const src = inEl.value.trim();
+    if (!src) { toast('NO INPUT SOURCE DETECTED'); return; }
+
+    const opts = {
+      stringEnc: $('o-stringEnc').checked,
+      emoji:     $('o-emoji').checked,
+      ctrlFlow:  $('o-ctrlFlow').checked,
+      deadCode:  $('o-deadCode').checked,
+      mangle:    $('o-mangle').checked,
+      numEnc:    $('o-numEnc').checked,
+      selfDefend:$('o-selfDefend').checked,
+      antiDebug: $('o-antiDebug').checked,
+      domainLock:$('o-domainLock').checked,
+      domains:   prompt('Domains to lock (comma-separated, empty = skip):') || '',
+      iife:      $('o-iife').checked,
+      intensity: $('intensity').value,
+      seed:      $('keySeed').value
+    };
+
+    try {
+      const t0 = performance.now();
+      const result = obfuscate(src, opts);
+      const ms = (performance.now() - t0).toFixed(1);
+      outEl.value = result;
+      $('outStats').textContent = result.length + ' bytes';
+      const ratio = src.length ? ((result.length / src.length) * 100).toFixed(0) : 0;
+      $('stats').innerHTML = `done in <b>${ms}ms</b> — size <b>${ratio}%</b> of original`;
+      toast('OBFUSCATION COMPLETE — ' + ms + 'ms');
+    } catch (err) {
+      outEl.value = '/* ENGINE ERROR: ' + err.message + ' */';
+      toast('ERROR: ' + err.message);
+    }
+  });
+
+  $('copy').addEventListener('click', () => {
+    if (!outEl.value) return toast('NOTHING TO COPY');
+    navigator.clipboard.writeText(outEl.value)
+      .then(() => toast('OUTPUT COPIED TO CLIPBOARD'))
+      .catch(() => toast('CLIPBOARD BLOCKED — SELECT MANUALLY'));
+  });
+
+  $('dl').addEventListener('click', () => {
+    if (!outEl.value) return toast('NOTHING TO DOWNLOAD');
+    const blob = new Blob([outEl.value], { type: 'application/javascript' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'obfuscated_' + Date.now() + '.js';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('FILE DOWNLOADED');
+  });
+
+  // sample code on load
+  inEl.value = `// Demo — try different option combos
+function greet(name) {
+  var msg = 'Hello, ' + name + '! Welcome to the machine.';
+  console.log(msg);
+  var secret = 42;
+  if (secret > 40) {
+    console.log('The answer is ' + secret);
+  }
+  return secret;
+}
+
+function addNumbers(a, b, c) {
+  var total = a + b + c;
+  return total * 2;
+}
+
+greet('world');
+console.log(addNumbers(1, 2, 3));`;
+  inEl.dispatchEvent(new Event('input'));
+})();
+</script>
+
+  <!-- NEXUS OBFUSCATOR — BLOGGER READY COMPONENT -->
+<div id="nexus-engine-box">
+  <div class="nexus-header">
+    <div class="nexus-logo">N</div>
+    <div class="nexus-brand">
+      <h2 class="nexus-title">NEXUS OBFUSCATOR</h2>
+      <div class="nexus-sub">ADVANCED CLIENT-SIDE JAVASCRIPT OBFUSCATION ENGINE v4.2</div>
+    </div>
+    <div class="nexus-status"><span class="nexus-dot"></span>ENGINE READY — 100% LOCAL</div>
+  </div>
+
+  <div class="nexus-wrap">
+    <div class="nexus-panel">
+      <div class="nexus-panel-head">
+        <span>&gt;&gt; INPUT SOURCE</span>
+        <span id="nexus-inStats">0 bytes</span>
+      </div>
+      <textarea id="nexus-input" spellcheck="false" placeholder="// Paste your JavaScript here..."></textarea>
+    </div>
+    <div class="nexus-panel">
+      <div class="nexus-panel-head">
+        <span>&gt;&gt; OBFUSCATED OUTPUT</span>
+        <span id="nexus-outStats">0 bytes</span>
+      </div>
+      <textarea id="nexus-output" spellcheck="false" readonly="readonly" placeholder="// Output appears here..."></textarea>
+    </div>
+  </div>
+
+  <div class="nexus-controls">
+    <div class="nexus-opt-grid">
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-stringEnc" checked="checked" /><span>String Encryption<span class="nexus-desc">XOR+Base64 runtime decoder with per-string keys</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-emoji" /><span>Emoji Encoding<span class="nexus-desc">Encode strings as emoji byte sequences</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-ctrlFlow" checked="checked" /><span>Control Flow Flattening<span class="nexus-desc">Convert logic into switch-dispatch state machines</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-deadCode" checked="checked" /><span>Dead Code Injection<span class="nexus-desc">Insert opaque, never-executed decoy branches</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-mangle" checked="checked" /><span>Identifier Mangling<span class="nexus-desc">Rename local vars/functions to _0x prefixed hex</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-numEnc" checked="checked" /><span>Number Encoding<span class="nexus-desc">Transform numeric literals into arithmetic expressions</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-selfDefend" /><span>Self-Defending<span class="nexus-desc">Break output if code is beautified/reformatted</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-antiDebug" /><span>Anti-Debug Protection<span class="nexus-desc">Debugger traps + console neutralization</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-domainLock" /><span>Domain Lock<span class="nexus-desc">Bind execution to allowed domain(s)</span></span></label>
+      <label class="nexus-opt"><input type="checkbox" id="nexus-o-iife" checked="checked" /><span>Self-Executing Wrapper<span class="nexus-desc">IIFE enclosure with argument-coupling</span></span></label>
+    </div>
+
+    <div class="nexus-row">
+      <label>INTENSITY</label>
+      <select id="nexus-intensity">
+        <option value="1">LOW</option>
+        <option value="2" selected="selected">MEDIUM</option>
+        <option value="3">HIGH</option>
+        <option value="4">EXTREME</option>
+      </select>
+      <label>KEY ROTATION</label>
+      <input type="number" id="nexus-keySeed" min="1" max="99999" value="1337" style="width:100px;" />
+      <button type="button" class="nexus-btn-primary" id="nexus-go">OBFUSCATE &gt;&gt;</button>
+      <button type="button" class="nexus-ghost" id="nexus-copy">COPY OUTPUT</button>
+      <button type="button" class="nexus-ghost" id="nexus-dl">DOWNLOAD</button>
+      <span id="nexus-stats"></span>
+    </div>
+  </div>
+
+  <div class="nexus-toast" id="nexus-toast"></div>
+  <div class="nexus-footer">NEXUS OBFUSCATOR — All processing executed locally via client JavaScript. No code transmits over the network.</div>
+</div>
+
+<style>
+/*<![CDATA[*/
+  #nexus-engine-box {
+    --nx-bg: #0a0e14;
+    --nx-panel: #111823;
+    --nx-panel2: #0d1420;
+    --nx-border: #1e2a3a;
+    --nx-accent: #00ff9c;
+    --nx-accent2: #00c8ff;
+    --nx-dim: #5c6f85;
+    --nx-text: #c9d6e3;
+    --nx-mono: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
+    background: var(--nx-bg);
+    color: var(--nx-text);
+    font-family: var(--nx-mono);
+    border: 1px solid var(--nx-border);
+    border-radius: 8px;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 18px 0;
+    position: relative;
+    overflow: hidden;
+    line-height: 1.5;
+  }
+  #nexus-engine-box * { box-sizing: border-box; }
+  .nexus-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--nx-border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .nexus-logo {
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--nx-accent);
+    display: grid;
+    place-items: center;
+    color: var(--nx-accent);
+    font-weight: 900;
+    font-size: 16px;
+    box-shadow: 0 0 14px rgba(0, 255, 156, 0.35);
+  }
+  .nexus-brand { display: flex; flex-direction: column; }
+  .nexus-title {
+    font-size: 16px !important;
+    letter-spacing: 2px;
+    color: var(--nx-accent) !important;
+    margin: 0 !important;
+    font-weight: 700;
+  }
+  .nexus-sub { font-size: 10px; color: var(--nx-dim); margin-top: 2px; letter-spacing: 1px; }
+  .nexus-status { margin-left: auto; font-size: 11px; color: var(--nx-accent2); display: flex; align-items: center; }
+  .nexus-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--nx-accent);
+    margin-right: 6px;
+    box-shadow: 0 0 8px var(--nx-accent);
+  }
+  .nexus-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 18px 24px;
+  }
+  @media (max-width: 820px) {
+    .nexus-wrap { grid-template-columns: 1fr; }
+  }
+  .nexus-panel {
+    background: var(--nx-panel);
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .nexus-panel-head {
+    padding: 8px 14px;
+    background: var(--nx-panel2);
+    border-bottom: 1px solid var(--nx-border);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--nx-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #nexus-engine-box textarea {
+    width: 100%;
+    min-height: 300px;
+    background: var(--nx-panel2);
+    border: none;
+    color: var(--nx-text);
+    font-family: var(--nx-mono);
+    font-size: 12px;
+    padding: 14px;
+    outline: none;
+    resize: vertical;
+    line-height: 1.6;
+    tab-size: 2;
+  }
+  .nexus-controls { padding: 0 24px 18px 24px; }
+  .nexus-opt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 8px;
+  }
+  .nexus-opt {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--nx-panel);
+    border: 1px solid var(--nx-border);
+    padding: 9px 12px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.2s;
+  }
+  .nexus-opt:hover { border-color: var(--nx-accent); }
+  .nexus-opt input { margin-top: 2px; accent-color: var(--nx-accent); cursor: pointer; }
+  .nexus-desc { display: block; font-size: 9.5px; color: var(--nx-dim); margin-top: 2px; }
+  .nexus-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .nexus-row label { font-size: 10px; color: var(--nx-dim); letter-spacing: 1px; }
+  .nexus-row select, .nexus-row input[type=number] {
+    background: var(--nx-panel);
+    border: 1px solid var(--nx-border);
+    color: var(--nx-text);
+    font-family: var(--nx-mono);
+    font-size: 11px;
+    padding: 7px 10px;
+    border-radius: 4px;
+    outline: none;
+  }
+  #nexus-engine-box button {
+    font-family: var(--nx-mono);
+    font-size: 11.5px;
+    letter-spacing: 1px;
+    padding: 9px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nexus-btn-primary {
+    background: linear-gradient(90deg, var(--nx-accent), var(--nx-accent2));
+    border: none;
+    color: #04121a !important;
+    font-weight: 800;
+  }
+  .nexus-btn-primary:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 0 16px rgba(0, 255, 156, 0.4);
+  }
+  .nexus-ghost {
+    background: transparent;
+    border: 1px solid var(--nx-border);
+    color: var(--nx-text);
+    font-weight: 400;
+  }
+  .nexus-ghost:hover {
+    border-color: var(--nx-accent2);
+    color: var(--nx-accent2);
+  }
+  #nexus-stats { font-size: 11px; color: var(--nx-dim); margin-left: auto; }
+  #nexus-stats b { color: var(--nx-accent2); }
+  .nexus-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--nx-panel);
+    border: 1px solid var(--nx-accent);
+    color: var(--nx-accent);
+    padding: 10px 18px;
+    font-size: 11.5px;
+    border-radius: 4px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 999999;
+  }
+  .nexus-toast.show { opacity: 1; transform: translateY(0); }
+  .nexus-footer {
+    padding: 10px 24px;
+    font-size: 9.5px;
+    color: var(--nx-dim);
+    border-top: 1px solid var(--nx-border);
+  }
+/*]]>*/
+</style>
+
+<script type="text/javascript">
+//<![CDATA[
+(function () {
+  'use strict';
+
+  /* ---------- PRNG (Deterministic Xorshift) ---------- */
+  var _seed = 1337;
+  function srand(s) { _seed = (s >>> 0) || 1337; }
+  function rnd() {
+    _seed ^= _seed << 13; _seed >>>= 0;
+    _seed ^= _seed >> 17;
+    _seed ^= _seed << 5;  _seed >>>= 0;
+    return (_seed >>> 0) / 4294967296;
+  }
+  function ri(n) { return Math.floor(rnd() * n); }
+  function pick(a) { return a[ri(a.length)]; }
+  function hex(n) {
+    var s = '_0x';
+    var c = 'abcdef0123456789';
+    for (var i = 0; i < n; i++) s += c[ri(c.length)];
+    return s;
+  }
+
+  /* ---------- Encryption Utilities ---------- */
+  function xorB64(str, key) {
+    var out = '';
+    for (var i = 0; i < str.length; i++) {
+      out += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    return out;
+  }
+
+  function b64(s) {
+    try { return btoa(unescape(encodeURIComponent(s))); }
+    catch (e) { return btoa(s.replace(/[^\x00-\x7F]/g, '?')); }
+  }
+
+  function encryptString(str) {
+    var key = Array.from({ length: 8 }, function () {
+      return String.fromCharCode(33 + ri(90));
+    }).join('');
+    var enc = b64(xorB64(unescape(encodeURIComponent(str)), key));
+    return { enc: enc, key: b64(key) };
+  }
+
+  /* ---------- Emoji Byte Mapping ---------- */
+  var EMOJI_MAP = [
+    '🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘','🌙','🌚','🌛','🌜','☀','🌤','⛅','🌧',
+    '⛄','⚡','🔥','💧','🌊','🌱','🌳','🌸','🍄','🐞','🦋','🐝','🐢','🐍','🦎','🐙'
+  ];
+
+  function emojiEncode(str) {
+    var out = '';
+    var bytes = new TextEncoder().encode(str);
+    for (var i = 0; i < bytes.length; i++) {
+      var b = bytes[i];
+      out += EMOJI_MAP[(b >> 4) & 0x0F];
+      out += EMOJI_MAP[b & 0x0F];
+    }
+    return out;
+  }
+
+  function emojiDecoderExpr() {
+    return 'var _0xemoji = (function(){ var M = ' + JSON.stringify(EMOJI_MAP) + '; return function(e){\n' +
+      '  var o = [], i = 0;\n' +
+      '  for (; i < e.length; i += 2) {\n' +
+      '    var hi = M.indexOf(e[i]), lo = M.indexOf(e[i+1]);\n' +
+      '    o.push(String.fromCharCode((hi << 4) | lo));\n' +
+      '  }\n' +
+      '  try { return decodeURIComponent(escape(o.join(\'\'))); } catch(_) { return o.join(\'\'); }\n' +
+      '};})();\n';
+  }
+
+  /* ---------- Numeric Literal Transform ---------- */
+  function encodeNumber(n) {
+    n = Number(n);
+    if (!isFinite(n) || Math.abs(n) > 1e6) return String(n);
+    var offset = ri(800000) + 100000;
+    var sum = offset + n;
+    var variants = [
+      '(' + sum + ' - ' + offset + ')',
+      '(' + offset + ' ^ ' + (offset ^ n) + ' ^ ' + offset + ')',
+      '(~[]+[]).length && (' + sum + ' - ' + offset + ')'
+    ];
+    return pick(variants);
+  }
+
+  /* ---------- Identifiers & Scope Flattening ---------- */
+  function mangleIdentifiers(code) {
+    var renames = new Map();
+    var counter = 0;
+    var locals = new Set();
+
+    code = code.replace(/function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)/g, function (m, fnName, params) {
+      var nn = hex(4) + (counter++).toString(16);
+      renames.set(fnName, nn);
+      params.split(',').forEach(function (p) {
+        p = p.trim(); if (p) locals.add(p);
+      });
+      return 'function ' + nn + '(' + params + ')';
+    });
+
+    code = code.replace(/\b(var|let|const)\s+([A-Za-z_$][\w$]*)/g, function (m, kw, vName) {
+      if (renames.has(vName)) return kw + ' ' + renames.get(vName);
+      if (locals.has(vName)) return m;
+      var nn = hex(4) + (counter++).toString(16);
+      renames.set(vName, nn);
+      return kw + ' ' + nn;
+    });
+
+    renames.forEach(function (newId, oldId) {
+      code = code.replace(new RegExp('\\b' + oldId.replace(/\$/g, '\\$') + '\\b', 'g'), newId);
+    });
+    return code;
+  }
+
+  function flattenControlFlow(code) {
+    return code.replace(/function\s+(_0x[\w$]+)\s*\(([^)]*)\)\s*\{([\s\S]*?)\n\}/g, function (m, fname, params, body) {
+      if (body.length < 40 || body.indexOf('switch') !== -1) return m;
+      var statements = body.split(';').map(function (s) { return s.trim(); }).filter(Boolean);
+      if (statements.length < 2 || statements.length > 10) return m;
+
+      var stateVar = hex(3);
+      var cases = '';
+      statements.forEach(function (stmt, idx) {
+        var next = (idx + 1 < statements.length) ? (stateVar + ' = ' + encodeNumber(idx + 1) + '; ') : '';
+        cases += 'case ' + encodeNumber(idx) + ': ' + stmt + '; ' + next + 'continue _loop;\n';
+      });
+
+      return 'function ' + fname + '(' + params + '){\n' +
+             '  var ' + stateVar + ' = ' + encodeNumber(0) + ';\n' +
+             '  _loop: for(;;){\n' +
+             '    switch(' + stateVar + '){\n' +
+             cases +
+             '      default: break _loop;\n' +
+             '    }\n' +
+             '  }\n' +
+             '}';
+    });
+  }
+
+  function deadCodeInject(code, count) {
+    var decoys = [
+      function () { var a = hex(3), b = hex(3); return 'if(' + encodeNumber(0) + '){ var ' + a + ' = ' + encodeNumber(ri(500)) + '; var ' + b + ' = ' + a + ' * ' + encodeNumber(ri(50)) + '; }'; },
+      function () { var a = hex(3); return 'while(' + encodeNumber(0) + '){ var ' + a + ' = ' + encodeNumber(ri(100)) + '; }'; },
+      function () { var a = hex(3); return 'var ' + a + ' = (' + encodeNumber(0) + ') ? ' + encodeNumber(ri(10)) + ' : ' + encodeNumber(ri(20)) + ';'; }
+    ];
+    var lines = code.split('\n');
+    for (var i = 0; i < count; i++) {
+      var at = ri(lines.length) + 1;
+      lines.splice(at, 0, '  ' + pick(decoys)());
+    }
+    return lines.join('\n');
+  }
+
+  /* ---------- Protections (Strict-Mode Compatible) ---------- */
+  function domainLockProlog(domains) {
+    var list = domains.split(',').map(function (d) { return d.trim(); }).filter(Boolean);
+    if (!list.length) return '';
+    var entries = list.map(function (d) {
+      var res = encryptString(d);
+      return '[' + JSON.stringify(res.enc) + ',' + JSON.stringify(res.key) + ']';
+    });
+    return '(function(){\n' +
+      '  var allowed = [' + entries.join(',') + '].map(function(pair){ return _0xdec(pair[0], pair[1]); });\n' +
+      '  var host = (typeof location !== "undefined" && location.hostname) ? location.hostname : "";\n' +
+      '  var valid = allowed.some(function(d){ return host === d || host.endsWith("." + d) || d === "*"; });\n' +
+      '  if (!valid) { throw new Error("Unauthorized domain execution locked."); }\n' +
+      '})();\n';
+  }
+
+  function antiDebugProlog() {
+    return '(function(){\n' +
+      '  var _c = (typeof console !== "undefined") ? console : {};\n' +
+      '  ["log","warn","info","debug","dir","table"].forEach(function(m){ if(_c[m]) _c[m] = function(){}; });\n' +
+      '  setInterval(function(){\n' +
+      '    (function(){ return false; })["constructor"]("debugger")["call"]();\n' +
+      '  }, 3500);\n' +
+      '})();\n';
+  }
+
+  function selfDefendProlog() {
+    return '(function(){\n' +
+      '  var _guard = function(){\n' +
+      '    var reg = new RegExp("\\\\w+ *\\\\(\\\\)\\\\s*\\\\{\\\\s*\\\\w+ *\\\\( *\\\\)");\n' +
+      '    return !reg.test(_guard.toString());\n' +
+      '  };\n' +
+      '  if (!_guard()){ while(true){} }\n' +
+      '})();\n';
+  }
+
+  /* ---------- Compilation Pipeline ---------- */
+  function obfuscate(src, opts) {
+    srand(parseInt(opts.seed, 10) || 1337);
+    var code = src;
+
+    // 1. Literal extraction
+    var literals = [];
+    code = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, function (m) {
+      var val;
+      try { val = JSON.parse(m); } catch (_) { val = m.slice(1, -1); }
+      if (!val || val.length < 2) return m;
+      var token = '__NX_STR_TOKEN_' + literals.length + '__';
+      literals.push(val);
+      return token;
+    });
+
+    // 2. Mangling
+    if (opts.mangle) code = mangleIdentifiers(code);
+
+    // 3. Control flow flattening
+    if (opts.ctrlFlow) code = flattenControlFlow(code);
+
+    // 4. Number encoding
+    if (opts.numEnc) {
+      code = code.replace(/\b(\d+)\b/g, function (m, num) {
+        return num !== '0' ? encodeNumber(num) : m;
+      });
+    }
+
+    // 5. Restore strings
+    literals.forEach(function (strVal, i) {
+      var token = '__NX_STR_TOKEN_' + i + '__';
+      var replacement;
+      if (opts.emoji) {
+        var encEmoji = emojiEncode(strVal);
+        replacement = '_0xemoji(' + JSON.stringify(encEmoji) + ')';
+      } else if (opts.stringEnc) {
+        var res = encryptString(strVal);
+        replacement = '_0xdec(' + JSON.stringify(res.enc) + ',' + JSON.stringify(res.key) + ')';
+      } else {
+        replacement = JSON.stringify(strVal);
+      }
+      code = code.split(token).join(replacement);
+    });
+
+    // 6. Dead Code
+    if (opts.deadCode) {
+      var counts = { 1: 2, 2: 6, 3: 15, 4: 30 };
+      code = deadCodeInject(code, counts[opts.intensity] || 6);
+    }
+
+    // 7. Prologues
+    var prologues = '';
+    if (opts.stringEnc) {
+      prologues += 'var _0xdec = function(s, k){\n' +
+        '  s = atob(s); k = atob(k); var o = "";\n' +
+        '  for (var i = 0; i < s.length; i++) o += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));\n' +
+        '  try { return decodeURIComponent(escape(o)); } catch(_) { return o; }\n' +
+        '};\n';
+    }
+    if (opts.emoji) prologues += emojiDecoderExpr();
+    if (opts.domainLock) prologues += domainLockProlog(opts.domains || '');
+    if (opts.antiDebug) prologues += antiDebugProlog();
+    if (opts.selfDefend) prologues += selfDefendProlog();
+
+    // 8. Wrapper assembly
+    var wrapperArg = hex(4);
+    var head = opts.iife ? '/* NEXUS OBFUSCATED */\n(function(' + wrapperArg + '){\n\'use strict\';\n' : '';
+    var tail = opts.iife ? '\n})(typeof window !== "undefined" ? window : globalThis);' : '';
+
+    var output = head + prologues + code + tail;
+
+    if (parseInt(opts.intensity, 10) >= 4) {
+      output = output.split('\n').map(function (l) { return l.trim(); }).filter(Boolean).join(' ');
+    }
+
+    return output;
+  }
+
+  /* ---------- Event Handlers ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var inArea = $('nexus-input'), outArea = $('nexus-output');
+
+  function notify(msg) {
+    var t = $('nexus-toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  inArea.addEventListener('input', function () {
+    $('nexus-inStats').textContent = inArea.value.length + ' bytes';
+  });
+
+  $('nexus-go').addEventListener('click', function () {
+    var raw = inArea.value.trim();
+    if (!raw) { notify('NO JAVASCRIPT DETECTED'); return; }
+
+    var lockReq = $('nexus-o-domainLock').checked;
+    var domains = lockReq ? (prompt('Allowed domains (comma-separated, e.g. mysite.com,localhost):') || '') : '';
+
+    var config = {
+      stringEnc: $('nexus-o-stringEnc').checked,
+      emoji:     $('nexus-o-emoji').checked,
+      ctrlFlow:  $('nexus-o-ctrlFlow').checked,
+      deadCode:  $('nexus-o-deadCode').checked,
+      mangle:    $('nexus-o-mangle').checked,
+      numEnc:    $('nexus-o-numEnc').checked,
+      selfDefend:$('nexus-o-selfDefend').checked,
+      antiDebug: $('nexus-o-antiDebug').checked,
+      domainLock:lockReq,
+      domains:   domains,
+      iife:      $('nexus-o-iife').checked,
+      intensity: $('nexus-intensity').value,
+      seed:      $('nexus-keySeed').value
+    };
+
+    try {
+      var t0 = performance.now();
+      var compiled = obfuscate(raw, config);
+      var delta = (performance.now() - t0).toFixed(1);
+      outArea.value = compiled;
+      $('nexus-outStats').textContent = compiled.length + ' bytes';
+      var ratio = raw.length ? ((compiled.length / raw.length) * 100).toFixed(0) : 0;
+      $('nexus-stats').innerHTML = 'Done in <b>' + delta + 'ms</b> — Output ratio <b>' + ratio + '%</b>';
+      notify('OBFUSCATION COMPLETE (' + delta + 'ms)');
+    } catch (err) {
+      outArea.value = '/* ENGINE ERROR: ' + err.message + ' */';
+      notify('ERROR: ' + err.message);
+    }
+  });
+
+  $('nexus-copy').addEventListener('click', function () {
+    if (!outArea.value) return notify('NO OUTPUT TO COPY');
+    navigator.clipboard.writeText(outArea.value)
+      .then(function () { notify('COPIED TO CLIPBOARD'); })
+      .catch(function () { notify('CLIPBOARD BLOCKED — SELECT MANUALLY'); });
+  });
+
+  $('nexus-dl').addEventListener('click', function () {
+    if (!outArea.value) return notify('NOTHING TO DOWNLOAD');
+    var blob = new Blob([outArea.value], { type: 'application/javascript' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'obfuscated_' + Date.now() + '.js';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    notify('FILE DOWNLOAD STARTED');
+  });
+
+  inArea.value = '// Sample script\nfunction auth(user) {\n  var secret = "super_admin_pass";\n  console.log("Validating session for " + user);\n  return user === secret;\n}\nauth("guest");';
+  inArea.dispatchEvent(new Event('input'));
+})();
+//]]>
+</script>
+</body>
+</html>
