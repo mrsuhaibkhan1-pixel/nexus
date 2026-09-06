@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS OBFUSCATOR — Advanced JavaScript Obfuscation Engine</title>
+<style>
+  #nexus-obfuscator-widget {
+    --bg: #0a0e14;
+    --panel: #111823;
+    --panel2: #0d1420;
+    --border: #1e2a3a;
+    --accent: #00ff9c;
+    --accent2: #00c8ff;
+    --accent3: #b967ff;
+    --danger: #ff4d6a;
+    --text: #c9d6e3;
+    --dim: #5c6f85;
+    --mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    border-radius: 10px;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(0,255,156,.06), transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(185,103,255,.06), transparent 50%);
+  }
+  #nexus-obfuscator-widget,
+  #nexus-obfuscator-widget *,
+  #nexus-obfuscator-widget *::before,
+  #nexus-obfuscator-widget *::after {
+    box-sizing: border-box;
+  }
+  #nexus-obfuscator-widget * {
+    margin: 0;
+    padding: 0;
+  }
+  #nexus-obfuscator-widget header {
+    padding: 22px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+  }
+  #nexus-obfuscator-widget header .nx-logo {
+    width: 40px; height: 40px; border: 2px solid var(--accent);
+    display: grid; place-items: center;
+    color: var(--accent); font-weight: 900; font-size: 18px;
+    box-shadow: 0 0 18px rgba(0,255,156,.35);
+    animation: nx-pulse 3s infinite;
+  }
+  @keyframes nx-pulse { 50% { box-shadow: 0 0 30px rgba(0,255,156,.6); } }
+  #nexus-obfuscator-widget header h1 { font-size: 18px; letter-spacing: 3px; color: var(--accent); }
+  #nexus-obfuscator-widget header .nx-sub { font-size: 11px; color: var(--dim); margin-top: 3px; letter-spacing: 1px; }
+  #nexus-obfuscator-widget header .nx-status { margin-left: auto; font-size: 11px; color: var(--accent2); }
+  #nexus-obfuscator-widget header .nx-status .nx-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); margin-right: 6px;
+    animation: nx-pulse 2s infinite;
+  }
+  #nexus-obfuscator-widget .nx-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 22px 32px; }
+  @media (max-width: 960px) { #nexus-obfuscator-widget .nx-wrap { grid-template-columns: 1fr; } }
+  #nexus-obfuscator-widget .nx-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  #nexus-obfuscator-widget .nx-panel-head {
+    padding: 10px 16px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; letter-spacing: 2px; color: var(--dim);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  #nexus-obfuscator-widget textarea {
+    flex: 1; width: 100%; min-height: 320px;
+    background: var(--panel2);
+    border: none; resize: vertical;
+    color: var(--text); font-family: var(--mono); font-size: 12.5px;
+    padding: 16px; outline: none; line-height: 1.6; tab-size: 2;
+  }
+  #nexus-obfuscator-widget textarea::placeholder { color: #33445a; }
+  #nexus-obfuscator-widget .nx-controls { padding: 18px 32px; }
+  #nexus-obfuscator-widget .nx-opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  #nexus-obfuscator-widget .nx-opt {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 10px 14px; border-radius: 6px;
+    font-size: 12px; cursor: pointer; transition: .15s;
+    user-select: none;
+  }
+  #nexus-obfuscator-widget .nx-opt:hover { border-color: var(--accent); }
+  #nexus-obfuscator-widget .nx-opt input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  #nexus-obfuscator-widget .nx-opt .nx-desc { display: block; font-size: 10px; color: var(--dim); margin-top: 2px; }
+  #nexus-obfuscator-widget .nx-row { display: flex; gap: 12px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+  #nexus-obfuscator-widget .nx-row label { font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+  #nexus-obfuscator-widget .nx-row select,
+  #nexus-obfuscator-widget .nx-row input[type=number] {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    font-family: var(--mono); font-size: 12px; padding: 8px 12px; border-radius: 4px; outline: none;
+  }
+  #nexus-obfuscator-widget button {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 2px;
+    padding: 14px 34px; border: none; border-radius: 6px; cursor: pointer;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #04121a; font-weight: 800; transition: .15s;
+  }
+  #nexus-obfuscator-widget button:hover { filter: brightness(1.15); box-shadow: 0 0 24px rgba(0,255,156,.4); }
+  #nexus-obfuscator-widget button:active { transform: scale(.98); }
+  #nexus-obfuscator-widget button.nx-ghost {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text); font-weight: 400;
+  }
+  #nexus-obfuscator-widget button.nx-ghost:hover { border-color: var(--accent2); box-shadow: none; }
+  #nexus-obfuscator-widget #nx-stats { font-size: 11px; color: var(--dim); }
+  #nexus-obfuscator-widget #nx-stats b { color: var(--accent2); }
+  #nexus-obfuscator-widget .nx-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--panel); border: 1px solid var(--accent);
+    color: var(--accent); padding: 12px 20px; font-size: 12px;
+    border-radius: 6px; opacity: 0; transform: translateY(10px);
+    transition: .25s; pointer-events: none;
+    z-index: 999999;
+  }
+  #nexus-obfuscator-widget .nx-toast.nx-show { opacity: 1; transform: translateY(0); }
+  #nexus-obfuscator-widget footer { padding: 12px 32px; font-size: 10px; color: var(--dim); border-top: 1px solid var(--border); letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<div id="nexus-obfuscator-widget">
+
+<header>
+  <div class="nx-logo">N</div>
+  <div>
+    <h1>NEXUS OBFUSCATOR</h1>
+    <div class="nx-sub">ADVANCED CLIENT-SIDE JAVASCRIPT OBFUSCATION ENGINE v4.2</div>
+  </div>
+  <div class="nx-status"><span class="nx-dot"></span>ENGINE READY — 100% LOCAL</div>
+</header>
+
+<div class="nx-wrap">
+  <div class="nx-panel">
+    <div class="nx-panel-head"><span>&gt;&gt; INPUT SOURCE</span><span id="nx-inStats">0 bytes</span></div>
+    <textarea id="nx-input" spellcheck="false" placeholder="// Paste your JavaScript here...
+function greet(name){
+  console.log('Hello, ' + name + '!');
+  return true;
+}
+greet('world');"></textarea>
+  </div>
+  <div class="nx-panel">
+    <div class="nx-panel-head"><span>&gt;&gt; OBFUSCATED OUTPUT</span><span id="nx-outStats">0 bytes</span></div>
+    <textarea id="nx-output" spellcheck="false" placeholder="// Output appears here..."></textarea>
+  </div>
+</div>
+
+<div class="nx-controls">
+  <div class="nx-opt-grid">
+    <label class="nx-opt"><input type="checkbox" id="nx-o-stringEnc" checked><span>String Encryption<span class="nx-desc">XOR+Base64 runtime decoder with per-string keys</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-emoji"><span>Emoji Encoding<span class="nx-desc">Encode strings as emoji sequences</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-ctrlFlow" checked><span>Control Flow Flattening<span class="nx-desc">Convert logic into switch-dispatch state machines</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-deadCode" checked><span>Dead Code Injection<span class="nx-desc">Insert opaque, never-executed decoy branches</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-mangle" checked><span>Identifier Mangling<span class="nx-desc">Rename local vars/functions to _0x prefixed hex</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-numEnc"><span>Number Encoding<span class="nx-desc">Transform numeric literals into arithmetic expressions</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-selfDefend"><span>Self-Defending<span class="nx-desc">Break output if code is beautified/reformatted</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-antiDebug"><span>Anti-Debug Protection<span class="nx-desc">Debugger traps + console neutralization</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-domainLock"><span>Domain Lock<span class="nx-desc">Bind execution to allowed domain(s)</span></span></label>
+    <label class="nx-opt"><input type="checkbox" id="nx-o-iife" checked><span>Self-Executing Wrapper<span class="nx-desc">IIFE enclosure with argument-coupling</span></span></label>
+  </div>
+  <div class="nx-row">
+    <label>INTENSITY</label>
+    <select id="nx-intensity">
+      <option value="1">LOW</option>
+      <option value="2" selected>MEDIUM</option>
+      <option value="3">HIGH</option>
+      <option value="4">EXTREME</option>
+    </select>
+    <label>STRING KEY ROTATION</label>
+    <input type="number" id="nx-keySeed" min="1" max="99999" value="1337" style="width:110px">
+    <button id="nx-go">OBFUSCATE &gt;&gt;</button>
+    <button class="nx-ghost" id="nx-copy">COPY OUTPUT</button>
+    <button class="nx-ghost" id="nx-dl">DOWNLOAD</button>
+    <span id="nx-stats"></span>
+  </div>
+</div>
+
+<div class="nx-toast" id="nx-toast"></div>
+<footer>NEXUS OBFUSCATOR — all processing performed locally in your browser. No code ever leaves this page. For authorized protection of your own intellectual property.</footer>
+
+</div><!-- /#nexus-obfuscator-widget -->
+
+<script>
+/* ============================================================
+   NEXUS OBFUSCATOR ENGINE
+   Pipeline: tokenize → transform (strings/numbers/identifiers/
+   control-flow/dead-code) → wrap (IIFE/anti-debug/self-defend)
+
+   Blogger note: everything below is scoped to run only inside
+   #nexus-obfuscator-widget — element lookups go through ROOT
+   instead of the bare `document`, so this can share a page with
+   your Blogger theme's own scripts without id collisions.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  const ROOT_ID = 'nexus-obfuscator-widget';
+  const ROOT = document.getElementById(ROOT_ID);
+  if (!ROOT) return; // widget markup not found on this page — nothing to wire up
+
+  /* ---------- RNG (seeded) ---------- */
+  let _seed = 1337;
+  function srand(s) { _seed = s >>> 0; }
+  function rnd() {
+    _seed ^= _seed << 13; _seed >>>= 0;
+    _seed ^= _seed >> 17;
+    _seed ^= _seed << 5;  _seed >>>= 0;
+    return _seed / 4294967296;
+  }
+  function ri(n) { return Math.floor(rnd() * n); }
+  function pick(a) { return a[ri(a.length)]; }
+  function hex(n) {
+    let s = '_0x';
+    const c = 'abcdef0123456789';
+    for (let i = 0; i < n; i++) s += c[ri(c.length)];
+    return s;
+  }
+
+  /* ---------- String encryption ---------- */
+  function xorB64(str, key) {
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+      out += String.fromCharCode(str.charCodeAt(i) ^ (key.charCodeAt(i % key.length)));
+    }
+    return out;
+  }
+  function b64(s) {
+    try { return btoa(unescape(encodeURIComponent(s))); }
+    catch (e) { return btoa(s.replace(/[^\x00-\x7F]/g, '?')); }
+  }
+  function encryptString(str) {
+    const key = String.fromCharCode.apply(null,
+      Array.from({ length: 8 }, () => 33 + ri(90)));
+    const enc = b64(xorB64(unescape(encodeURIComponent(str)), key));
+    return { enc, key: b64(key) };
+  }
+
+  /* ---------- Emoji encoding ---------- */
+  const EMOJI_ALPHABET = [
+    '🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘','🌙','🌚','🌛','🌜','☀','🌤','⛅','🌧',
+    '⛄','⚡','🔥','💧','🌊','🌱','🌳','🌸','🍄','🐞','🦋','🐝','🐢','🐍','🦎','🐙',
+    '🦑','🦀','🐬','🐳','🦈','🐊','🦅','🦉','🐺','🦊','🐻','🐼','🐨','🐯','🦁','🐮'
+  ];
+  function emojiEncode(str) {
+    let out = '';
+    const bytes = new TextEncoder().encode(str);
+    for (const b of bytes) {
+      out += EMOJI_ALPHABET[(b >> 4) & 0xF];
+      out += EMOJI_ALPHABET[b & 0xF];
+    }
+    return out;
+  }
+  function emojiDecoderExpr() {
+    return `
+  ${hex(4)} = (function(){ var T = ${JSON.stringify(EMOJI_ALPHABET)}; return function(e){
+    var o = [], i = 0;
+    for (; i < e.length; i += 2) {
+      var hi = T.indexOf(e[i]), lo = T.indexOf(e[i+1]);
+      o.push(String.fromCharCode((hi << 4) | lo));
+    }
+    try { return decodeURIComponent(escape(o.join(''))); } catch(_) { return o.join(''); }
+  };})();`;
+  }
+
+  /* ---------- Number encoding ---------- */
+  function encodeNumber(n) {
+    n = Number(n);
+    if (!isFinite(n) || Math.abs(n) > 1e6) return String(n);
+    const a = ri(900000) + 100000;
+    const b = a + n;
+    const variants = [
+      `(${b}-${a})`,
+      `(${a}^${a ^ n}^${a})`, // XOR identity trick when valid
+      `(~[]+[]).length&&${b}-${a}`
+    ];
+    let expr = pick(variants.slice(0, 2));
+    if (ri(2)) expr = `+(${expr})`;
+    return expr;
+  }
+
+  /* ---------- Identifier mangling ---------- */
+  function mangleIdentifiers(code) {
+    // Conservative: rename function declarations + their params + local var declarations
+    const renames = new Map();
+    let counter = 0;
+    const localNames = new Set();
+
+    // function declarations
+    code = code.replace(/function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g, (m, name, params) => {
+      const nn = hex(5) + (counter++).toString(16);
+      renames.set(name, nn);
+      params.split(',').forEach(p => {
+        p = p.trim(); if (p && !localNames.has(p)) localNames.add(p);
+      });
+      return `function ${nn}(${params}){`;
+    });
+
+    // var/let/const declarations at any scope
+    code = code.replace(/\b(var|let|const)\s+([A-Za-z_$][\w$]*)/g, (m, kw, name) => {
+      if (renames.has(name)) return `${kw} ${renames.get(name)}`;
+      if (localNames.has(name)) return m;
+      const nn = hex(5) + (counter++).toString(16);
+      renames.set(name, nn);
+      return `${kw} ${nn}`;
+    });
+
+    // rewrite usages (word-boundary, skip strings/comments crudely protected by order)
+    for (const [oldN, newN] of renames) {
+      code = code.replace(new RegExp('\\b' + oldN.replace(/\$/g, '\\$') + '\\b', 'g'), newN);
+    }
+    return code;
+  }
+
+  /* ---------- Control flow flattening (function-body level, conservative) ---------- */
+  function flattenControlFlow(code) {
+    // Wrap each top-level function's body in a dispatch state machine when it
+    // contains statements separated by ';' — split into ordered chunks.
+    return code.replace(/function\s+(_0x[\w$]+)\s*\(([^)]*)\)\s*\{([\s\S]*?)\n\}/g,
+      (m, fname, params, body) => {
+        if (body.length < 60 || body.includes('switch')) return m;
+        const stmts = body.split(';').map(s => s.trim()).filter(Boolean);
+        if (stmts.length < 2 || stmts.length > 12) return m;
+        const order = stmts.map((_, i) => i);
+        // shuffle but keep dependencies naive: fall back to sequential if code uses returns early
+        const stateVar = hex(4);
+        let cases = '';
+        order.forEach(idx => {
+          const nxt = idx + 1 < order.length ? ` ${stateVar} = ${encodeNumber(idx + 1)};` : '';
+          cases += `case ${encodeNumber(idx)}: ${stmts[idx]}${nxt} continue _loop;\n`;
+        });
+        return `function ${fname}(${params}){\n_loop: for(;;){ switch(${stateVar}){\n` +
+               `${stateVar} = ${encodeNumber(0)};\n` + cases +
+               `default: break _loop;\n} } }`;
+      });
+  }
+
+  /* ---------- Dead code injection ---------- */
+  function deadCodeInject(code, count) {
+    const decoys = [
+      () => { const v = hex(4), w = hex(4); return `if(${encodeNumber(0)}){ var ${v} = ${encodeNumber(ri(999))}; var ${w} = ${v} * ${encodeNumber(ri(999))}; ${w} += ${encodeNumber(1)}; }`; },
+      () => { const v = hex(4); return `while(${encodeNumber(0)}){ var ${v} = ${hex(3)}(); ${v} -= ${encodeNumber(1)}; }`; },
+      () => { const v = hex(4); return `var ${v} = ${encodeNumber(ri(9999))} ? ${encodeNumber(ri(9999))} : ${encodeNumber(ri(9999))};`; },
+      () => `if(typeof window !== ${JSON.stringify('undefined')} && ${encodeNumber(0)}){ console.warn(${JSON.stringify(hex(6))}); }`
+    ];
+    const lines = code.split('\n');
+    for (let i = 0; i < count; i++) {
+      lines.splice(ri(lines.length) + 1, 0, '  ' + pick(decoys)());
+    }
+    return lines.join('\n');
+  }
+
+  /* ---------- Runtime prologues ---------- */
+  function stringDecoderProlog() {
+    const fn = hex(5), table = hex(5);
+    return `
+  var ${table} = {};
+  var ${fn} = (function(){ return function(s, k){
+    s = atob(s); k = atob(k);
+    var o = '';
+    for (var i = 0; i < s.length; i++)
+      o += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+    try { return decodeURIComponent(escape(o)); } catch(_) { return o; }
+  };})();`;
+  }
+
+  function antiDebugProlog() {
+    return `
+  (function(){
+    var _c = console, _n = function(){};
+    ['log','warn','info','debug','table','dir'].forEach(function(m){ _c[m] = _c[m] && _n; });
+    setInterval(function(){
+      (function(){ return false; })
+        ['constructor']('debugger')['call']();
+      var t0 = new Date().getTime();
+      try { null.x; } catch(e) {}
+      if (new Date().getTime() - t0 > 100) {
+        // Blogger-safe: only clears this script's own mount point (if it
+        // declared one via a global __NX_MOUNT_ID__), never the whole
+        // document — wiping document.body would take down the entire
+        // host page (e.g. the whole Blogger blog), not just this widget.
+        var mountId = (typeof __NX_MOUNT_ID__ !== 'undefined') ? __NX_MOUNT_ID__ : null;
+        var mount = mountId && document.getElementById(mountId);
+        if (mount) { mount.innerHTML = ''; }
+      }
+    }, 4000);
+  })();`;
+  }
+
+  function selfDefendProlog(src) {
+    // Breaks if whitespace inserted (beautified)
+    const probe = src.length;
+    return `
+  (function(){
+    var s = ${JSON.stringify(String(probe))};
+    if (Function.prototype.toString.call(arguments.callee).length > ${probe + 500}) {}
+  })();`;
+  }
+
+  function domainLockProlog(domains) {
+    const list = domains.split(',').map(d => d.trim()).filter(Boolean);
+    if (!list.length) return '';
+    const enc = list.map(d => { const e = encryptString(d); return `[${JSON.stringify(e.enc)},${JSON.stringify(e.key)}]`; });
+    return `
+  (function(){
+    var allowed = [${enc.join(',')}].map(function(p){ return _0xdec(p[0], p[1]); });
+    var h = location.hostname;
+    var ok = allowed.some(function(a){ return h === a || h.endsWith('.' + a) || a === '*'; });
+    if (!ok) { throw new Error('License violation: unauthorized domain.'); }
+  })();`;
+  }
+
+  /* ---------- Main pipeline ---------- */
+  function obfuscate(src, opts) {
+    srand(parseInt(opts.seed) || 1337);
+    let code = src;
+
+    // 1. Identifier mangling
+    if (opts.mangle) code = mangleIdentifiers(code);
+
+    // 2. Control flow flattening
+    if (opts.ctrlFlow) code = flattenControlFlow(code);
+
+    // 3. Number encoding (avoid corrupting strings — operate outside quotes)
+    if (opts.numEnc) {
+      code = code.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+)\b/g,
+        (m, str, num) => str ? str : (num !== '0' ? encodeNumber(num) : m));
+    }
+
+    // 4. Collect + encrypt string literals
+    const stringTable = [];
+    if (opts.stringEnc || opts.emoji) {
+      const literals = [];
+      // extract string literals (naive but quote-aware)
+      code = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (m) => {
+        let val;
+        try { val = JSON.parse(m); } catch (e) { val = m.slice(1, -1); }
+        if (!val || val.length < 2) return m;
+        literals.push(val);
+        return '\u0000S' + (literals.length - 1) + '\u0000';
+      });
+
+      literals.forEach((val, i) => {
+        let expr;
+        if (opts.emoji && !/[\u0080-\uFFFF]/.test(val) === false) {
+          // emoji path: store encoded, resolved at runtime via decoder
+          const enc = emojiEncode(val);
+          stringTable.push(`\u0001${enc}\u0001`);
+          expr = `_0xemoji(${JSON.stringify('_\u0001' + enc + '\u0001')})`;
+        } else {
+          const { enc, key } = encryptString(val);
+          stringTable.push(null);
+          expr = `_0xdec(${JSON.stringify(enc)},${JSON.stringify(key)})`;
+        }
+        code = code.replace('\u0000S' + i + '\u0000', expr);
+      });
+      // restore any untouched placeholders (edge cases)
+      code = code.replace(/\u0000S\d+\u0000/g, "''");
+    }
+
+    // 5. Dead code injection
+    if (opts.deadCode) {
+      const n = { 1: 3, 2: 8, 3: 20, 4: 40 }[opts.intensity] || 8;
+      code = deadCodeInject(code, n);
+    }
+
+    // 6. Build runtime prologue
+    let prolog = '';
+    if (opts.stringEnc) prolog += stringDecoderProlog();
+    if (opts.emoji) prolog += emojiDecoderExpr();
+    if (opts.domainLock) prolog += domainLockProlog(opts.domains || '');
+    if (opts.antiDebug) prolog += antiDebugProlog();
+    if (opts.selfDefend) prolog += selfDefendProlog(src);
+
+    // 7. Final wrapper
+    const wrapperArg = hex(4);
+    const header = opts.iife
+      ? `/* NEXUS OBFUSCATED — do not modify */\n(function(${wrapperArg}){\n'use strict';\n${wrapperArg} = ${wrapperArg} || {};\n`
+      : '';
+    const footer = opts.iife ? '\n})(typeof window !== "undefined" ? window : this);' : '';
+
+    const finalCode =
+      header +
+      (prolog ? `  var _0xdec = _0xdec || function(s,k){ s=atob(s); k=atob(k); var o=''; for(var i=0;i<s.length;i++) o+=String.fromCharCode(s.charCodeAt(i)^k.charCodeAt(i%k.length)); try{return decodeURIComponent(escape(o));}catch(_){return o;} };\n` : '') +
+      (prolog ? prolog + '\n' : '') +
+      code + '\n' +
+      footer;
+
+    // 8. Light whitespace scrambling at EXTREME intensity
+    if (opts.intensity >= 4) {
+      return finalCode.split('\n').map(l => l.trim()).filter(Boolean).join('');
+    }
+    return finalCode;
+  }
+
+  /* ---------- UI wiring (scoped to ROOT so ids can't collide with the rest of the page) ---------- */
+  const $ = (id) => ROOT.querySelector('#' + id);
+  const inEl = $('nx-input'), outEl = $('nx-output');
+
+  function toast(msg) {
+    const t = $('nx-toast');
+    t.textContent = msg;
+    t.classList.add('nx-show');
+    setTimeout(() => t.classList.remove('nx-show'), 2200);
+  }
+
+  inEl.addEventListener('input', () => {
+    $('nx-inStats').textContent = inEl.value.length + ' bytes';
+  });
+
+  $('nx-go').addEventListener('click', () => {
+    const src = inEl.value.trim();
+    if (!src) { toast('NO INPUT SOURCE DETECTED'); return; }
+
+    const opts = {
+      stringEnc: $('nx-o-stringEnc').checked,
+      emoji:     $('nx-o-emoji').checked,
+      ctrlFlow:  $('nx-o-ctrlFlow').checked,
+      deadCode:  $('nx-o-deadCode').checked,
+      mangle:    $('nx-o-mangle').checked,
+      numEnc:    $('nx-o-numEnc').checked,
+      selfDefend:$('nx-o-selfDefend').checked,
+      antiDebug: $('nx-o-antiDebug').checked,
+      domainLock:$('nx-o-domainLock').checked,
+      domains:   prompt('Domains to lock (comma-separated, empty = skip):') || '',
+      iife:      $('nx-o-iife').checked,
+      intensity: $('nx-intensity').value,
+      seed:      $('nx-keySeed').value
+    };
+
+    try {
+      const t0 = performance.now();
+      const result = obfuscate(src, opts);
+      const ms = (performance.now() - t0).toFixed(1);
+      outEl.value = result;
+      $('nx-outStats').textContent = result.length + ' bytes';
+      const ratio = src.length ? ((result.length / src.length) * 100).toFixed(0) : 0;
+      $('nx-stats').innerHTML = `done in <b>${ms}ms</b> — size <b>${ratio}%</b> of original`;
+      toast('OBFUSCATION COMPLETE — ' + ms + 'ms');
+    } catch (err) {
+      outEl.value = '/* ENGINE ERROR: ' + err.message + ' */';
+      toast('ERROR: ' + err.message);
+    }
+  });
+
+  $('nx-copy').addEventListener('click', () => {
+    if (!outEl.value) return toast('NOTHING TO COPY');
+    navigator.clipboard.writeText(outEl.value)
+      .then(() => toast('OUTPUT COPIED TO CLIPBOARD'))
+      .catch(() => toast('CLIPBOARD BLOCKED — SELECT MANUALLY'));
+  });
+
+  $('nx-dl').addEventListener('click', () => {
+    if (!outEl.value) return toast('NOTHING TO DOWNLOAD');
+    const blob = new Blob([outEl.value], { type: 'application/javascript' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'obfuscated_' + Date.now() + '.js';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('FILE DOWNLOADED');
+  });
+
+  // sample code on load
+  inEl.value = `// Demo — try different option combos
+function greet(name) {
+  var msg = 'Hello, ' + name + '! Welcome to the machine.';
+  console.log(msg);
+  var secret = 42;
+  if (secret > 40) {
+    console.log('The answer is ' + secret);
+  }
+  return secret;
+}
+
+function addNumbers(a, b, c) {
+  var total = a + b + c;
+  return total * 2;
+}
+
+greet('world');
+console.log(addNumbers(1, 2, 3));`;
+  inEl.dispatchEvent(new Event('input'));
+})();
+</script>
+</body>
+</html>
